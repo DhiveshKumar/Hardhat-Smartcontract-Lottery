@@ -36,4 +36,21 @@ module.exports = {
       default: 1,
     },
   },
+  etherscan: {
+    // yarn hardhat verify --network <NETWORK> <CONTRACT_ADDRESS> <CONSTRUCTOR_PARAMETERS>
+    apiKey: {
+      sepolia: ETHERSCAN_API_KEY,
+      // polygon: POLYGONSCAN_API_KEY,
+    },
+  },
+  gasReporter: {
+    enabled: false,
+    currency: "USD",
+    outputFile: "gas-report.txt",
+    noColors: true,
+    // coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+  },
+  mocha: {
+    timeout: 300000, // 300 seconds max for running tests
+  },
 };

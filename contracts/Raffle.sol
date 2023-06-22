@@ -25,6 +25,8 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     uint64 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
     uint256 private immutable i_timeInterval;
+    uint256 private prevTimeStamp;
+
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
     RaffleState private s_raffleState;
@@ -41,6 +43,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     enum RaffleState {
         OPEN,
         CALCULATING
+        // returns 0 for OPEN and 1 for claculating
     }
 
     constructor(
@@ -49,8 +52,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         bytes32 gasLane,
         uint64 subscriptionId,
         uint32 callbackGasLimit,
-        uint256 timeInterval,
-        uint256 prevTimeStamp
+        uint256 timeInterval
     ) VRFConsumerBaseV2(vrfCoordinatorAddress) {
         //vrfCoordinatorAddress is the addr of contract that verifies the random no
         i_entranceFee = entranceFee;
@@ -76,20 +78,7 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         emit RaffleEnter(msg.sender);
     }
 
-    function requestRandomWinner() external {
-        s_raffleState = RaffleState.CALCULATING;
-        uint256 requestId = i_vrfCoordinator.requestRandomWords( //reqRandomnwords is fn of i_vrfcoordinator contract and it returns a id that
-            // tells who made the request and other information
-            i_gasLane, // or gasLane- the max amt willing to pay(in wei) for gas
-            i_subscriptionId,
-            REQUEST_CONFIRMATIONS, // no of confirmations after nodes respond
-            i_callbackGasLimit,
-            NUM_WORDS // no of random values we want
-        );
-
-        emit RequestedRaffleWinner(requestId);
-    }
-
+    //it is used when we use hardhat
     function fulfillRandomWords(
         uint256 /*requestId*/,
         uint256[] memory randomWords // its arr of random we requested and we requested 1 random value
@@ -114,57 +103,13 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         return i_entranceFee;
     }
 
-    function getPlayers(uint256 index) public view returns (address) {
+    function getPlayer(uint256 index) public view returns (address) {
         return s_players[index];
     }
 
     function getRecentWinner() public view returns (address) {
         return s_recentWinner;
     }
-
-    // function checkUpkeep(
-    //     bytes memory /*checkData*/
-    // )
-    //     external
-    //     override
-    //     returns (bool upkeepNeeded, bytes memory /*performData*/)
-    // {
-    //     // if 4 conditions satisfied retyurn false
-    //     // 1. check if raffle is open and time interval is passed
-    //     // 2. check atleast 1 players is present and has some eth
-    //     // 3. check if subscription has some link
-    //     // 4. lottery in open state
-    //     bool isOpen = (RaffleState.OPEN == s_raffleState);
-    //     bool hasPassed = ((block.timestamp - s_prevTimeStamp) > i_timeInterval);
-    //     bool hasPlayers = (s_players.length > 0);
-    //     bool hasBalance = (address(this).balance > 0);
-    //     upkeepNeeded = (isOpen && hasPlayers && hasBalance && hasPassed);
-    //     return (upkeepNeeded, "0x0");
-    // }
-
-    // function performUpkeep(bytes calldata performData) external override {
-    //     // (bool upkeepNeeded, ) = checkUpkeep("");0
-    //     (bool upkeepNeeded, ) = checkUpkeep("");
-    //     if (!upkeepNeeded) {
-    //         revert Raffle__UpKeepNotNeeded(
-    //             address(this.balance),
-    //             s_players.length,
-    //             s_raffleState
-    //         );
-    //     }
-
-    //     s_raffleState = RaffleState.CALCULATING;
-    //     uint256 requestId = i_vrfCoordinator.requestRandomWords( //reqRandomnwords is fn of i_vrfcoordinator contract and it returns a id that
-    //         // tells who made the request and other information
-    //         i_gasLane, // or gasLane- the max amt willing to pay(in wei) for gas
-    //         i_subscriptionId,
-    //         REQUEST_CONFIRMATIONS, // no of confirmations after nodes respond
-    //         i_callbackGasLimit,
-    //         NUM_WORDS // no of random values we want
-    //     );
-
-    //     emit RequestedRaffleWinner(requestId);
-    // }
 
     function checkUpkeep(
         bytes memory /* checkData */
@@ -184,15 +129,15 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
-        (bool upkeepNeeded, ) = checkUpkeep("");
-        // require(upkeepNeeded, "Upkeep not needed");
-        if (!upkeepNeeded) {
-            revert Raffle__UpKeepNotNeeded(
-                address(this).balance,
-                s_players.length,
-                uint256(s_raffleState)
-            );
-        }
+        // (bool upkeepNeeded, ) = checkUpkeep("");
+        // // require(upkeepNeeded, "Upkeep not needed");
+        // if (!upkeepNeeded) {
+        //     revert Raffle__UpKeepNotNeeded(
+        //         address(this).balance,
+        //         s_players.length,
+        //         uint256(s_raffleState)
+        //     );
+        // }
         s_raffleState = RaffleState.CALCULATING;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane,
@@ -217,11 +162,19 @@ contract Raffle is VRFConsumerBaseV2, KeeperCompatibleInterface {
         return s_players.length;
     }
 
-    function getTimeStamp() public view returns (uint256) {
+    function getLastTimeStamp() public view returns (uint256) {
         return s_prevTimeStamp;
     }
 
     function getRequestConfirmations() public pure returns (uint256) {
         return REQUEST_CONFIRMATIONS;
+    }
+
+    function getTimeInterval() public view returns (uint256) {
+        return i_timeInterval;
+    }
+
+    function getEntranceFee() public view returns (uint256) {
+        return i_entranceFee;
     }
 }
